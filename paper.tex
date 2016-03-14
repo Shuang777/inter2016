@@ -1,0 +1,194 @@
+\documentclass[a4paper]{article}
+
+\usepackage{INTERSPEECH2016}
+
+\usepackage{graphicx}
+\usepackage{amssymb,amsmath,bm,cite,graphicx}
+\usepackage{textcomp}
+\usepackage{float, caption}
+
+\def\vec#1{\ensuremath{\bm{{#1}}}}
+\def\mat#1{\vec{#1}}
+
+
+\sloppy % better line breaks
+%\ninept
+\eightpt
+
+\title{Factor analysis based speaker identification using ASR}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% If multiple authors, uncomment and edit the lines shown below.       %%
+%% Note that each line must be emphasized {\em } by itself.             %%
+%% (by Stephen Martucci, author of spconf.sty).                         %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\makeatletter
+%\def\name#1{\gdef\@name{#1\\}}
+%\makeatother
+%\name{{\em Firstname1 Lastname1, Firstname2 Lastname2, Firstname3 Lastname3,}\\
+%      {\em Firstname4 Lastname4, Firstname5 Lastname5, Firstname6 Lastname6,
+%      Firstname7 Lastname7}}
+%%%%%%%%%%%%%%% End of required multiple authors changes %%%%%%%%%%%%%%%%%
+
+\makeatletter
+\def\name#1{\gdef\@name{#1\\}}
+\makeatother \name{{\em Hang Su$^1$$^2$, Steven Wegmann$^1$}
+\thanks{ Supported by Texas Instrument.}}
+\address{$^1$ International Computer Science Institute, Berkeley, California, US \\
+  $^2$ Dept. of Electrical Engineering \& Computer Science, University of California, Berkeley, CA, USA \\
+  {\small \tt suhang3240@gmail.com swegmann@icsi.berkeley.edu}
+}
+
+%\twoauthors{Karen Sp\"{a}rck Jones.}{Department of Speech and Hearing \\
+%  Brittania University, Ambridge, Voiceland \\
+%  {\small \tt Karen@sh.brittania.edu} }
+%  {Rose Tyler}{Department of Linguistics \\
+%  University of Speechcity, Speechland \\
+%  {\small \tt RTyler@ling.speech.edu} }
+
+%
+\begin{document}
+
+\maketitle
+%
+\begin{abstract}
+
+In this paper we propose to improve speaker identification performance by importing statistics from speech 
+recognition systems. This approach aims to introduce techniques used in speech recognition to speaker 
+identification task. We compare different posterior statistics .
+
+Supervised data and unsupervised data share the same hidden layers but are fed into different softmax layers so that
+erroneous automatic speech recognition (ASR) transcriptions of the unsupervised data have less effect on shared 
+hidden layers. Experimental results on Babel data indicate that this approach always outperform naive SST on DNN, 
+and it can yield 1.3\% word error rate (WER) reduction compared with supervised DNN hybrid system. In addition, 
+if softmax layer is retrained with supervised data, it can lead up to another 0.8\% WER reduction.
+
+We also illustrate the details of speaker identification framework in Kaldi recognition toolkit. 
+
+\end{abstract}
+\noindent{\bf Index Terms}: Speaker identification, speech recognition, deep neural networks.
+
+
+\section{Introduction}
+Speaker identification using 
+
+
+\section{Factor analysis for speaker identification}
+\label{sec:shlmdnn}
+Figure~\ref{fig:shlmdnn} shows the structure of the SHL-MDNN. In this approach, supervised data and unsupervised 
+data share the same hidden layers, while the softmax layers are not shared.  
+
+Input layers covers a long contextual window of acoustic feature. In this paper, we use PLP feature transformed by
+linear discriminative analysis (LDA), maximum likelihood linear transformation (MLLT) and speaker adaptive training (SAD).
+Since supervised and unsupervised data use the same models for transformation estimation, it is reasonable to mix those
+transformed feature together and send them into shared hidden layers \footnote{This is different from the multi-lingual task
+where feature sent into shared hidden layers are not transformed}.
+
+We train the SHL-MDNN using supervised data and unsupervised data simultaneously, using mini-batch stochastic 
+gradient descent (SGD). Each mini-batch may contain different number of supervised and unsupervised frames. This 
+can be effectively done by frame randomization.
+
+The SHL-MDNN are pre-trained layer-wisely, using Contrastive Divergence algorithm for Restricted Boltzmann Machines (RBM) 
+\cite{hinton2006fast,mohamed2011deep}. Both supervised and unsupervised data are used for pretraining. The second stage 
+of model training is carried out by backpropagation (BP) algorithm. In each pass, the gradient of supervised frames and
+unsupervised frames are used to update softmax layers respectively. For shared hidden layers, however, the gradients are 
+combined for weight and bias update.
+
+After training, the softmax layer for unsupervised data is thrown away and only softmax for supervised data is preserved.
+Since the gradient for updating softmax layer and shared hidden layers are different, it helps to fine-tune the neural network
+using supervised data only for a few iterations.
+
+
+\section{Probabilistic LDA for speaker identification}
+
+\section{Import statistics from deep neural networks}
+
+\section{Experiments}
+\subsection{Experimental setup}
+\label{sec:setup}
+BABEL data in Table~\ref{tab:version} are used for experiments. Each language pack provides lexicons and a 
+limited amount of training data which has been transcribed at the word level. The data is divided into 
+subsets called the full language pack (FLP) and the limited language pack (LLP) which have approximately 
+65 hours and 10 hours of training data respectively. Development data sets (10 hours) are provided for 
+performance testing and parameter tuning. In this work, we used the LLP as supervised training data, and
+FLP data that does not appear in LLP as unsupervised data. Dev set is used for evaluating the performance
+of SST. Language pack statistics are summarized in Table~
+
+\begin{table}[htb]
+  \centering
+  \begin{tabular}{ccccc}
+    \hline
+              & version  \\
+    \hline
+    Vietnamese & IARPA-babel107b-v0.7   \\
+    Assamese   & IARPA-babel102b-v0.5a  \\
+    Bengali    & IARPA-babel103b-v0.4b \\
+%    Creole     & 201b-v0.2b \\
+%    Lao        & 203b-v3.1a \\
+    Zulu       & IARPA-babel206b-v0.1e  \\
+    Tamil      & IARPA-babel204b-v1.1b  \\
+    \hline
+  \end{tabular}
+  \caption{Babel data for different languages}
+  \label{tab:version}
+\end{table}
+
+The Kaldi toolkit\cite{kaldi11} is used for speech recognition framework. Standard 13-dim PLP feature, 
+together with 3-dim Kaldi pitch feature \cite{ghahremani2014pitch}, is extracted and used for maximum 
+likelihood GMM model training. Features are then transformed using LDA+MLLT before SAT training. 
+After GMM training is done, a tanh-neuron DNN-HMM hybrid system is trained using 
+the the 40-dimension transformed fMLLR (also known as CMLLR \cite{gales1996generation}) feature as input 
+and GMM-aligned senones as targets. This DNN serves as a baseline system in this paper, and is used for 
+decoding / ASR of unsupervised data to do semi-supervised training. fMLLR is estimated in an EM fashion
+for both training data, unsupervised data and test data. Despite the high WER in Babel setup, we still
+find it helpful to use fMLLR feature on top of LDA and MLLT transformations.
+
+Details of DNN training follows Section 2.2 in \cite{vesely13}. 
+In this paper, we use 6 hidden layers, where each hidden layer has 2048 neurons with sigmoids. Input layer
+is 440 dimension (i.e. the context of 11 fMLLR frames), and output layer for Vietnanmese is 1921 dimension.
+Mini-batch SGD is used for backpropagation. The training starts with an initial learning rate of 0.008 and halves the
+rate when the improvement in training objective (cross-entropy) on a cross-validation set between two successive 
+epochs falls below 0.01\%. The optimization terminates when the objective improves by less than 0.0001\%.
+Cross validation is done on 10\% of supervised data only.
+
+\subsection{Supervised Experiments}
+In order to get an idea how much semi supervised data may help in DNN acoustic modeling, we train GMM models using 
+LLP and FLP data separately. Both models are then used to align LLP and FLP data for DNN model training. 
+WERs of these DNN models on dev set are reported in Table~\ref{tab:sup}.
+
+\begin{table}[htb]
+  \centering
+  \begin{tabular}{ccc}
+    \hline
+     DNN $\backslash$ alignment model & LLP     & FLP \\
+     \hline
+     LLP                  & 64.4    & 59.5 \\
+     FLP                  & 57.0    & 51.5 \\
+     \hline
+  \end{tabular}
+  \caption {WER for supervised experiments}
+  \label{tab:sup}
+\end{table}
+
+As is shown in the table, 64.4\% is the baseline supervised experiment where only LLP data is used. 
+When LLP is used for GMM training and FLP is aligned and used for DNN training, the WER for DNN system is 57.0\%, 
+which we would like to consider as upper bound of semi-supervised training for DNN. 
+The WER 51.5\% is the upper bound in theory for semi-supervised training on all the models (including GMM flat start).
+
+
+
+\section{Conclusions and future work}
+\label{sec:conclusion}
+In this paper, we 
+
+
+\section{Acknowledgements}
+We would like to thank Daniel Povey for his help on factor analysis model in Kaldi.
+
+  
+%\newpage
+%\eightpt
+\bibliographystyle{IEEEtran}
+\bibliography{paper}
+
+\end{document}
